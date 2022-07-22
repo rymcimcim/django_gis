@@ -1,0 +1,20 @@
+version: '3.9'
+
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgis/postgis
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SuperSecret}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres_db}
+    volumes:
+      - ./volumes/pgdata:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    networks:
+      - web-app
+    restart: always
+
+networks:
+  web-app: {}
