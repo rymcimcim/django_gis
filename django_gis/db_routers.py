@@ -1,7 +1,9 @@
+import logging
+import random
+
 from django.db import connections
 from django.db.utils import OperationalError
 from django.utils.connection import ConnectionDoesNotExist
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +22,9 @@ class PrimaryReplicaRouter:
 
     def db_for_read(self, model, **hints):
         """
-        Ensures connection with primary. In case of failure it takes replica.
+        Reads go to a randomly-chosen instance.
         """
-        return self.db_alias
+        return random.choice((self.db_alias, 'replica'))
 
     def db_for_write(self, model, **hints):
         """
