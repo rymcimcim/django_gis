@@ -7,7 +7,34 @@ class IPTypes(models.TextChoices):
     NOT_PROVIDED = None
 
 
-class Location(models.Model):
+class CRUDMixin:
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None) -> None:
+        del using
+
+        super().save(
+            force_insert=force_insert,
+            force_update=force_update,
+            using='primary',
+            update_fields=update_fields)
+        
+        super().save(
+            force_insert=True,
+            force_update=force_update,
+            using='replica',
+            update_fields=update_fields)
+
+        return self.refresh_from_db(fields=('id',))
+    
+    def delete(self, using=None, keep_parents=False):
+        del using
+
+        pk = self.pk
+        super().delete(using='primary', keep_parents=keep_parents)
+        self.pk = pk
+        return super().delete(using='replica', keep_parents=keep_parents)
+
+
+class Location(CRUDMixin, models.Model):
     geoname_id = models.PositiveIntegerField(null=True)
     capital = models.CharField(max_length=163, blank=True)
 
@@ -15,7 +42,7 @@ class Location(models.Model):
         return f'{self.geoname_id}-{self.capital}'
 
 
-class GeoLocation(models.Model):
+class GeoLocation(CRUDMixin, models.Model):
     ip = models.GenericIPAddressField(null=True)
     ip_type = models.CharField(max_length=4, blank=True, choices=IPTypes.choices)
     continent_code = models.CharField(max_length=2)
@@ -42,7 +69,7 @@ class GeoLocation(models.Model):
         return f'{self.continent_name}-{self.country_name}:{self.latitude},{self.longitude}'
 
 
-class Language(models.Model):
+class Language(CRUDMixin, models.Model):
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     code = models.CharField(max_length=2, blank=True)
     name = models.CharField(max_length=25, blank=True)
