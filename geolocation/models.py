@@ -1,3 +1,4 @@
+from typing_extensions import Self
 from django.contrib.gis.db import models
 
 
@@ -7,8 +8,11 @@ class IPTypes(models.TextChoices):
     NOT_PROVIDED = None
 
 
-class CRUDMixin:
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None) -> None:
+class BaseModel(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None) -> Self:
         del using
 
         super().save(
@@ -25,7 +29,7 @@ class CRUDMixin:
 
         return self.refresh_from_db(fields=('id',))
     
-    def delete(self, using=None, keep_parents=False):
+    def delete(self, using=None, keep_parents=False) -> tuple[int, dict[str, int]]:
         del using
 
         pk = self.pk
@@ -33,8 +37,11 @@ class CRUDMixin:
         self.pk = pk
         return super().delete(using='replica', keep_parents=keep_parents)
 
+    class Meta:
+        abstract = True
 
-class Location(CRUDMixin, models.Model):
+
+class Location(BaseModel):
     geoname_id = models.PositiveIntegerField(null=True)
     capital = models.CharField(max_length=163, blank=True)
 
@@ -42,7 +49,7 @@ class Location(CRUDMixin, models.Model):
         return f'{self.geoname_id}-{self.capital}'
 
 
-class GeoLocation(CRUDMixin, models.Model):
+class GeoLocation(BaseModel):
     ip = models.GenericIPAddressField(null=True)
     ip_type = models.CharField(max_length=4, blank=True, choices=IPTypes.choices)
     continent_code = models.CharField(max_length=2)
@@ -69,7 +76,7 @@ class GeoLocation(CRUDMixin, models.Model):
         return f'{self.continent_name}-{self.country_name}:{self.latitude},{self.longitude}'
 
 
-class Language(CRUDMixin, models.Model):
+class Language(BaseModel):
     location = models.ForeignKey(Location, on_delete=models.CASCADE)
     code = models.CharField(max_length=2, blank=True)
     name = models.CharField(max_length=25, blank=True)

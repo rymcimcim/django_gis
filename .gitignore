@@ -165,3 +165,4 @@ volumes/
 # Dev and setup files
 dev_env.sh
 *.mmdb
+.vscode/
