@@ -1,39 +1,40 @@
 include .env
 export $(shell sed 's/=.*//' .env)
 
-.PHONY: db-down db-clean db-wipe dump-primary-db primary dump-replica populate-primary populate-replica populate db-fresh log-primary run-server migrate create-user setup setup-log-primary setup-run run clean
+.PHONY: db-clean db-wipe dump-database database-dev dump-database populate-database db-fresh log-database run-server migrate create-user setup setup-log-database setup-run run clean
 
-db-down :
-	docker compose down
 
-db-clean : db-down
+db-clean :
+	venv/bin/python manage.py flush --noinput
+
+
+db-wipe :
+	docker compose -f docker-compose.yml down
 	rm -rf volumes/
-	rm -f db.sqlite3
-
-db-wipe : db-clean
 	docker container prune -f
 
-dump-primary :
-	venv/bin/python manage.py dumpdata --exclude=auth --exclude=contenttypes --format=json --database=primary --verbosity=1 --output=geolocation/fixtures/geolocation.json
+db-dev-wipe : 
+	docker compose -f docker-compose-dev.yml down
+	rm -rf volumes/
+	docker container prune -f
 
-dump-replica :
-	venv/bin/python manage.py dumpdata --exclude=auth --exclude=contenttypes --format=json --database=replica --verbosity=1 --output=geolocation/fixtures/geolocation.json
+dump-database :
+	venv/bin/python manage.py dumpdata --exclude=auth --exclude=contenttypes --format=json --verbosity=1 --output=geolocation/fixtures/geolocation.json
 
-populate-primary :
-	venv/bin/python manage.py loaddata geolocation.json --database=primary 
+populate-database :
+	venv/bin/python manage.py loaddata geolocation.json
 
-populate-replica :
-	venv/bin/python manage.py loaddata geolocation.json --database=replica
+database : docker-compose.yml
+	docker compose -f docker-compose.yml up --detach
+	sleep 15
 
-populate : populate-primary populate-replica
+database-dev : docker-compose.yml
+	docker compose -f docker-compose-dev.yml up --detach
+	sleep 15
 
-primary-db : docker-compose.yml
-	docker compose up --detach
-	sleep 10
+db-fresh : db-wipe database
 
-db-fresh : db-wipe primary-db
-
-log-primary :
+log-database :
 	docker logs -f postgres_container
 
 venv : requirements.txt
@@ -45,20 +46,20 @@ run-server :
 	venv/bin/python manage.py runserver
 
 migrate :
-	venv/bin/python manage.py migrate --database primary
-	venv/bin/python manage.py migrate --database replica
+	venv/bin/python manage.py migrate
 
 create-user :
-	venv/bin/python manage.py createsuperuser --noinput --database primary
-	venv/bin/python manage.py createsuperuser --noinput --database replica
+	venv/bin/python manage.py createsuperuser --noinput
 
-setup : venv primary-db migrate create-user populate
+setup : venv database migrate create-user populate-database
 
-setup-log-primary : setup log-primary
+setup-dev : venv database-dev migrate create-user populate-database
+
+setup-log-database : setup log-database
 
 setup-run : setup run-server
 
-run : primary-db run-server
+run : database run-server
 
 migrations :
 	venv/bin/python manage.py makemigrations geolocation
