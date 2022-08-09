@@ -61,6 +61,9 @@ setup-run : setup run-server
 
 run : database run-server
 
+test:
+	venv/bin/python manage.py test
+
 migrations :
 	venv/bin/python manage.py makemigrations geolocation
 

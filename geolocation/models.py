@@ -17,6 +17,7 @@ class BaseModel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, force_insert: bool = False, force_update: bool = False, using: Optional[str] = None, update_fields: Optional[Iterable[str]] = None) -> None:
+        self.full_clean()
         super().save(force_insert, force_update, using, update_fields)
         transaction.on_commit(lambda: dump_data_base.delay())
     

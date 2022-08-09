@@ -16,6 +16,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 
+from rest_framework.permissions import AllowAny
 from rest_framework.routers import SimpleRouter
 
 from rest_framework_simplejwt.views import (
@@ -30,14 +31,14 @@ from geolocation.views import (
 )
 
 router = SimpleRouter()
-router.register(r'geolocations', GeoLocationViewSet, basename='GeoLocation')
-router.register(r'languages', LanguageViewSet, basename='Language')
-router.register(r'locations', LocationViewSet, basename='Location')
+router.register(r'geolocations', GeoLocationViewSet, basename='geolocation')
+router.register(r'languages', LanguageViewSet, basename='language')
+router.register(r'locations', LocationViewSet, basename='location')
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/', include((router.urls, 'router'), namespace='api')),
+    path('api/token/', TokenObtainPairView.as_view(permission_classes=(AllowAny,)), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(permission_classes=(AllowAny,)), name='token_refresh'),
 ]
