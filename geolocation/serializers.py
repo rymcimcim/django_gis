@@ -1,4 +1,5 @@
 from django.contrib.gis.geos import Point
+from django.db import transaction
 
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeometrySerializerMethodField
@@ -9,9 +10,22 @@ from geolocation.models import (
     Language,
     Location
 )
+from geolocation.tasks import dump_data_base
 
 
-class GeoIP2Serializer(serializers.ModelSerializer):
+class BaseModelSerializer(serializers.ModelSerializer):
+    def save(self, **kwargs):
+        instance = super().save(**kwargs)
+        transaction.on_commit(lambda: dump_data_base.delay())
+        return instance
+    
+    def update(self, instance, validated_data):
+        instance = super().update(instance, validated_data)
+        transaction.on_commit(lambda: dump_data_base.delay())
+        return instance
+
+
+class GeoIP2Serializer(BaseModelSerializer):
     is_in_european_union = serializers.BooleanField(default=False, source='is_eu')
     region = serializers.CharField(max_length=85, allow_blank=True, required=False, source='region_name')
 
@@ -20,13 +34,13 @@ class GeoIP2Serializer(serializers.ModelSerializer):
         fields = ('coordinates', 'city', 'continent_code', 'continent_name', 'country_code', 'country_name', 'postal_code')
 
 
-class LanguageSerializer(serializers.ModelSerializer):
+class LanguageSerializer(BaseModelSerializer):
     class Meta:
         model = Language
         fields = '__all__'
 
 
-class LocationSerializer(serializers.ModelSerializer):
+class LocationSerializer(BaseModelSerializer):
     class Meta:
         model = Location
         fields = '__all__'
@@ -37,7 +51,7 @@ class LocationSerializer(serializers.ModelSerializer):
         return representation
 
 
-class IPStackSerializer(serializers.ModelSerializer):
+class IPStackSerializer(BaseModelSerializer):
     type = serializers.ChoiceField(choices=IPTypes.choices, allow_blank=True, required=False, source='ip_type')
     zip = serializers.CharField(max_length=12, allow_blank=True, required=False, source='postal_code')
     longitude = serializers.DecimalField(max_digits=7, decimal_places=4, max_value=180, min_value=-180, required=True, write_only=True)
@@ -52,7 +66,7 @@ class IPStackSerializer(serializers.ModelSerializer):
         return Point(obj.latitude, obj.latitude)
 
 
-class GeoLocationSerializer(serializers.ModelSerializer):
+class GeoLocationSerializer(BaseModelSerializer):
     location = LocationSerializer(allow_null=True)
 
     class Meta:

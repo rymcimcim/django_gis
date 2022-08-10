@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
@@ -13,6 +15,7 @@ from geolocation.serializers import (
     LanguageSerializer,
     LocationSerializer
 )
+from geolocation.tasks import dump_data_base
 
 
 class LocationViewSet(viewsets.ModelViewSet):
@@ -62,3 +65,8 @@ class GeoLocationViewSet(viewsets.ModelViewSet):
             instance._prefetched_objects_cache = {}
 
         return Response(serializer.data)
+    
+    def destroy(self, request, *args, **kwargs):
+        response = super().destroy(request, *args, **kwargs)
+        transaction.on_commit(lambda: dump_data_base.delay())
+        return response

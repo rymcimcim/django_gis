@@ -1,9 +1,5 @@
-from typing import Iterable, Optional
-
 from django.contrib.gis.db import models
-from django.db import transaction
-
-from geolocation.tasks import dump_data_base
+from django.contrib.auth.models import User
 
 
 class IPTypes(models.TextChoices):
@@ -15,16 +11,6 @@ class IPTypes(models.TextChoices):
 class BaseModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    def save(self, force_insert: bool = False, force_update: bool = False, using: Optional[str] = None, update_fields: Optional[Iterable[str]] = None) -> None:
-        self.full_clean()
-        super().save(force_insert, force_update, using, update_fields)
-        transaction.on_commit(lambda: dump_data_base.delay())
-    
-    def delete(self, using=None, keep_parents=False) -> tuple[int, dict[str, int]]:
-        ret = super().delete(using=using, keep_parents=keep_parents)
-        transaction.on_commit(lambda: dump_data_base.delay())
-        return ret
 
     class Meta:
         abstract = True
@@ -45,7 +31,7 @@ class Language(BaseModel):
 class Location(BaseModel):
     geoname_id = models.PositiveIntegerField(null=True)
     capital = models.CharField(max_length=163, blank=True)
-    languages = models.ManyToManyField(Language)
+    languages = models.ManyToManyField(Language, blank=True)
 
     def __repr__(self) -> str:
         return f'{self.geoname_id}-{self.capital}'
