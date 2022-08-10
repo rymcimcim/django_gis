@@ -108,8 +108,14 @@ class JwtTests(APITestCase):
         del self.geolocations_list_url
 
 
-@tag('serialize', 'language')
+@tag('language')
 class LanguageTests(APITestCase):
+    def test_serializer_expected_fields(self):
+        payload_data = {'code':'AA','name':'AAA','native':'AAA'}
+        serializer = LanguageSerializer(data=payload_data)
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data.keys(), payload_data.keys())
+
     def test_code_field_max_length(self):
         with self.assertRaisesMessage(ValidationError, 'Ensure this field has no more than 2 characters.') as cm:
             serializer = LanguageSerializer(data={'code':'AAA','name':'AAA','native':'AAA'})
@@ -123,6 +129,11 @@ class LanguageTests(APITestCase):
             serializer.is_valid(raise_exception=True)
 
         self.assertEqual(cm.exception.detail['code'][0].code, 'required')
+
+    def test_code_field_content(self):
+        serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data['code'], 'AA')
     
     def test_name_field_max_length(self):
         with self.assertRaisesMessage(ValidationError, 'Ensure this field has no more than 25 characters.') as cm:
@@ -137,6 +148,11 @@ class LanguageTests(APITestCase):
             serializer.is_valid(raise_exception=True)
 
         self.assertEqual(cm.exception.detail['name'][0].code, 'required')
+
+    def test_name_field_content(self):
+        serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data['name'], 'AAA')
     
     def test_native_field_max_length(self):
         with self.assertRaisesMessage(ValidationError, 'Ensure this field has no more than 25 characters.') as cm:
@@ -151,6 +167,11 @@ class LanguageTests(APITestCase):
             serializer.is_valid(raise_exception=True)
 
         self.assertEqual(cm.exception.detail['native'][0].code, 'required')
+
+    def test_native_field_content(self):
+        serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
+        serializer.is_valid(raise_exception=True)
+        self.assertEqual(serializer.validated_data['native'], 'AAA')
     
     def test_code_name_native_unique_together(self):
         serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
@@ -162,16 +183,9 @@ class LanguageTests(APITestCase):
             serializer.is_valid(raise_exception=True)
 
         self.assertEqual(cm.exception.detail['non_field_errors'][0].code, 'unique')
-    
-    def test_language_positive(self):
-        serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
-        serializer.is_valid(raise_exception=True)
-
-        language = serializer.save()
-        self.assertIsInstance(language, Language)
 
 
-@tag('serialize', 'location')
+@tag('location')
 class LocationTests(APITestCase):
     def setUp(self) -> None:
         self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
@@ -212,9 +226,6 @@ class LocationTests(APITestCase):
     def test_capital_blank_positive(self):
         serializer = LocationSerializer(data={'geoname_id':12345,'capital':'','languages':[self.language_1.pk, self.language_2.pk]})
         self.assertTrue(serializer.is_valid(raise_exception=True))
-        
-        location = serializer.save()
-        self.assertIsInstance(location, Location)
     
     def test_capital_none_negative(self):
         with self.assertRaisesMessage(ValidationError, 'This field may not be null.') as cm:
@@ -226,9 +237,6 @@ class LocationTests(APITestCase):
     def test_languages_no_value_positive(self):
         serializer = LocationSerializer(data={'geoname_id':12345,'capital':'Capital City'})
         self.assertTrue(serializer.is_valid(raise_exception=True))
-        
-        location = serializer.save()
-        self.assertIsInstance(location, Location)
 
     def test_language_empty_list_positive(self):
         serializer = LocationSerializer(data={'geoname_id':12345,'capital':'Capital City', 'languages':[]})
