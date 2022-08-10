@@ -1,4 +1,5 @@
 import json
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -107,6 +108,24 @@ class JwtTests(APITestCase):
         del self.refresh_url
         del self.geolocations_list_url
 
+@tag('base')
+class BaseModelTests(APITestCase):
+    def test_save(self):
+        with patch('geolocation.tasks.dump_data_base') as dump_data_base_mock:
+            with patch('django.db.transaction.on_commit') as on_commit_mock:
+                Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
+                dump_data_base_mock.delay.assert_called_once
+                on_commit_mock.delay.assert_called_once
+
+    def test_update(self):
+        language = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
+
+        with patch('geolocation.tasks.dump_data_base') as dump_data_base_mock:
+            with patch('django.db.transaction.on_commit') as on_commit_mock:
+                Language.objects.update(**{'id': language.pk, 'code': 'BB'})
+                dump_data_base_mock.delay.assert_called_once
+                on_commit_mock.delay.assert_called_once
+
 
 @tag('language')
 class LanguageTests(APITestCase):
@@ -183,6 +202,13 @@ class LanguageTests(APITestCase):
             serializer.is_valid(raise_exception=True)
 
         self.assertEqual(cm.exception.detail['non_field_errors'][0].code, 'unique')
+    
+    def test_language_positive(self):
+        serializer = LanguageSerializer(data={'code':'AA','name':'AAA','native':'AAA'})
+        serializer.is_valid(raise_exception=True)
+
+        language = serializer.save()
+        self.assertIsInstance(language, Language)
 
 
 @tag('location')
