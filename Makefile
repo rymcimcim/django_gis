@@ -19,10 +19,10 @@ db-dev-wipe :
 	docker container prune -f
 
 dump-database :
-	venv/bin/python manage.py dumpdata --exclude=auth --exclude=contenttypes --format=json --verbosity=1 --output=geolocation/fixtures/geolocation.json
+	venv/bin/python manage.py dumpdata --exclude=auth --exclude=contenttypes --format=json --verbosity=1 --output=geolocations/fixtures/geolocations.json
 
 populate-database :
-	venv/bin/python manage.py loaddata geolocation.json
+	venv/bin/python manage.py loaddata geolocations.json
 
 database : docker-compose.yml
 	docker compose -f docker-compose.yml up --detach
@@ -65,7 +65,7 @@ test:
 	venv/bin/python manage.py test
 
 migrations :
-	venv/bin/python manage.py makemigrations geolocation
+	venv/bin/python manage.py makemigrations geolocations
 
 shell :
 	venv/bin/python manage.py shell

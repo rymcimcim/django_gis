@@ -3,29 +3,22 @@ from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.response import Response
 
-from geolocation.models import (
+from geolocations.models import (
     GeoLocation,
-    Language,
     Location
 )
-from geolocation.serializers import (
+from geolocations.serializers import (
     GeoIP2Serializer,
     GeoLocationSerializer,
     IPStackSerializer,
-    LanguageSerializer,
     LocationSerializer
 )
-from geolocation.tasks import dump_data_base
+from base.tasks import dump_data_base
 
 
 class LocationViewSet(viewsets.ModelViewSet):
     queryset = Location.objects.all()
     serializer_class = LocationSerializer
-
-
-class LanguageViewSet(viewsets.ModelViewSet):
-    queryset = Language.objects.all()
-    serializer_class = LanguageSerializer
 
 
 class GeoLocationViewSet(viewsets.ModelViewSet):

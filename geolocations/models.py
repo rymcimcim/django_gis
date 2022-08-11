@@ -1,31 +1,14 @@
 from django.contrib.gis.db import models
-from django.contrib.auth.models import User
+
+from base.models import BaseModel
+
+from languages.models import Language
 
 
 class IPTypes(models.TextChoices):
     IPV4 = 'ipv4'
     IPV6 = 'ipv6'
     NOT_PROVIDED = ''
-
-
-class BaseModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        abstract = True
-
-
-class Language(BaseModel):
-    code = models.CharField(max_length=2, db_index=True)
-    name = models.CharField(max_length=25)
-    native = models.CharField(max_length=25)
-
-    class Meta:
-        unique_together = ['code', 'name', 'native']
-
-    def __repr__(self) -> str:
-        return f'{self.name}-{self.native}'
 
 
 class Location(BaseModel):

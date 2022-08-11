@@ -40,7 +40,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
-    'geolocation',
+    'base',
+    'geolocations',
+    'languages',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
@@ -134,7 +136,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-GEOIP_PATH = BASE_DIR / 'geolocation/data'
+GEOIP_PATH = BASE_DIR / 'geolocations/data'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (

@@ -1,28 +1,16 @@
 from django.contrib.gis.geos import Point
-from django.db import transaction
 
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeometrySerializerMethodField
 
-from geolocation.models import (
+from geolocations.models import (
     GeoLocation,
     IPTypes,
-    Language,
     Location
 )
-from geolocation.tasks import dump_data_base
+from base.serializers import BaseModelSerializer
 
-
-class BaseModelSerializer(serializers.ModelSerializer):
-    def save(self, **kwargs):
-        instance = super().save(**kwargs)
-        transaction.on_commit(lambda: dump_data_base.delay())
-        return instance
-    
-    def update(self, instance, validated_data):
-        instance = super().update(instance, validated_data)
-        transaction.on_commit(lambda: dump_data_base.delay())
-        return instance
+from languages.serializers import LanguageSerializer
 
 
 class GeoIP2Serializer(BaseModelSerializer):
@@ -32,12 +20,6 @@ class GeoIP2Serializer(BaseModelSerializer):
     class Meta:
         model = GeoLocation
         fields = ('coordinates', 'city', 'continent_code', 'continent_name', 'country_code', 'country_name', 'postal_code')
-
-
-class LanguageSerializer(BaseModelSerializer):
-    class Meta:
-        model = Language
-        fields = '__all__'
 
 
 class LocationSerializer(BaseModelSerializer):

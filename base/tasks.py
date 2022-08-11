@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 @app.task
 def dump_data_base() -> None:
 
-    with open('geolocation/fixtures/geolocation.json', 'w', encoding='utf-8') as file:
+    with open('geolocations/fixtures/geolocations.json', 'w', encoding='utf-8') as file:
         try:
             call_command(dumpdata.Command(), exclude=['contenttypes', 'auth'], format='json', stdout=file)
         except CommandError:
