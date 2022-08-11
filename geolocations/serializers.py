@@ -6,11 +6,10 @@ from rest_framework_gis.serializers import GeometrySerializerMethodField
 from geolocations.models import (
     GeoLocation,
     IPTypes,
-    Location
 )
 from base.serializers import BaseModelSerializer
 
-from languages.serializers import LanguageSerializer
+from locations.serializers import LocationSerializer
 
 
 class GeoIP2Serializer(BaseModelSerializer):
@@ -20,17 +19,6 @@ class GeoIP2Serializer(BaseModelSerializer):
     class Meta:
         model = GeoLocation
         fields = ('coordinates', 'city', 'continent_code', 'continent_name', 'country_code', 'country_name', 'postal_code')
-
-
-class LocationSerializer(BaseModelSerializer):
-    class Meta:
-        model = Location
-        fields = '__all__'
-    
-    def to_representation(self, instance):
-        representation = super().to_representation(instance)
-        representation['languages'] = LanguageSerializer(instance.languages, many=True).data
-        return representation
 
 
 class IPStackSerializer(BaseModelSerializer):

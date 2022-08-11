@@ -24,11 +24,9 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
-from geolocations.views import (
-    GeoLocationViewSet,
-    LocationViewSet,
-)
+from geolocations.views import GeoLocationViewSet
 from languages.views import LanguageViewSet
+from locations.views import LocationViewSet
 
 router = SimpleRouter()
 router.register(r'geolocations', GeoLocationViewSet, basename='geolocations')

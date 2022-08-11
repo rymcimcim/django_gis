@@ -1,9 +1,6 @@
 from django.contrib.gis import admin
 
-from geolocations.models import (
-    Location,
-    GeoLocation,
-)
+from geolocations.models import GeoLocation
 
-admin.site.register(Location)
+
 admin.site.register(GeoLocation)

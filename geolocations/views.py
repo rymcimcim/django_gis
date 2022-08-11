@@ -5,20 +5,13 @@ from rest_framework.response import Response
 
 from geolocations.models import (
     GeoLocation,
-    Location
 )
 from geolocations.serializers import (
     GeoIP2Serializer,
     GeoLocationSerializer,
     IPStackSerializer,
-    LocationSerializer
 )
 from base.tasks import dump_data_base
-
-
-class LocationViewSet(viewsets.ModelViewSet):
-    queryset = Location.objects.all()
-    serializer_class = LocationSerializer
 
 
 class GeoLocationViewSet(viewsets.ModelViewSet):

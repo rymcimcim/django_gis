@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'base',
     'geolocations',
     'languages',
+    'locations',
     'rest_framework',
     'rest_framework_simplejwt',
 ]
