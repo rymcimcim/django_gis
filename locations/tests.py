@@ -1,11 +1,18 @@
-from django.test import tag
+import json
 
-from rest_framework.test import APIRequestFactory, APITestCase
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
+from django.test import tag
+from django.urls import reverse
+
+from rest_framework import status
 from rest_framework.exceptions import ValidationError
+from rest_framework.test import APIRequestFactory, APITestCase
 
 from languages.models import Language
 from locations.models import Location
 from locations.serializers import LocationSerializer
+from locations.views import LocationViewSet
 
 
 @tag('location', 'serializer')
@@ -110,3 +117,76 @@ class LocationSerializerTests(APITestCase):
         self.language_1.delete()
         self.language_2.delete()
 
+
+@tag('location', 'viewset')
+class LocationViewSetTests(APITestCase):
+    def setUp(self) -> None:
+        language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
+        self.language_2 = Language.objects.create(**{'code':'BB','name':'BBB','native':'BBB'})
+        self.location_1 = Location.objects.create(**{'geoname_id': 12345, 'capital':'Capital City'})
+        self.location_1.languages.add(language_1.pk, self.language_2.pk)
+        self.rf_client = APIRequestFactory(enforce_csrf_checks=True)
+        User.objects.create_superuser(username='test_user', email='test_user@test.com', password='test_pass')
+        response = self.client.post(
+            reverse('token_obtain_pair'),
+            json.dumps({"username": "test_user", "password": "test_pass"}),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.token = response.data["access"]
+
+    def test_superuser_can_see_locations(self):
+        location_2 = Location.objects.create(**{'geoname_id': 54321, 'capital':'Capital City 2'})
+        location_2.languages.add(self.language_2.pk)
+        view = LocationViewSet.as_view({'get': 'list'})
+        request = self.rf_client.get(reverse('api:locations-list'), HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        response = view(request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data.get('count'), 2)
+
+        queryset = Location.objects.filter(id__in=[self.location_1.pk, location_2.pk])
+        data = LocationSerializer(queryset, many=True).data
+        self.assertListEqual(response.data.get("results"), data)
+    
+    def test_superuser_can_see_single_location(self):
+        view = LocationViewSet.as_view({'get': 'retrieve'})
+        request = self.rf_client.get(reverse('api:locations-detail', args=(self.location_1.pk,)), HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        response = view(request, pk=self.location_1.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        data = LocationSerializer(self.location_1).data
+        self.assertDictEqual(response.data, data)
+
+    def test_superuser_can_delete_location(self):
+        view = LocationViewSet.as_view({'delete': 'destroy'})
+        pk = self.location_1.pk
+        request = self.rf_client.delete(reverse('api:locations-detail', args=(pk,)), HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        response = view(request, pk=pk)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        with self.assertRaisesMessage(Location.DoesNotExist, 'Location matching query does not exist.'):
+            Location.objects.get(pk=pk)
+    
+    def test_superuser_can_update_location(self):
+        view = LocationViewSet.as_view({'put': 'update'})
+        update_payload = {'geoname_id': 54321, 'capital':'Capital City 2'}
+        pk = self.location_1.pk
+        request = self.rf_client.put(reverse('api:locations-detail', args=(pk,)), update_payload, HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        response = view(request, pk=pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        location = get_object_or_404(Location, pk=pk)
+        data = LocationSerializer(location).data
+        self.assertDictEqual(response.data, data)
+    
+    def test_superuser_can_partial_update_location(self):
+        view = LocationViewSet.as_view({'patch': 'partial_update'})
+        update_payload = {'geoname_id': 54321}
+        pk = self.location_1.pk
+        request = self.rf_client.patch(reverse('api:locations-detail', args=(pk,)), update_payload, HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        response = view(request, pk=pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        location = get_object_or_404(Location, pk=pk)
+        data = LocationSerializer(location).data
+        self.assertDictEqual(response.data, data)

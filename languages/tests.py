@@ -9,8 +9,8 @@ from rest_framework import status
 from rest_framework.exceptions import ValidationError
 from rest_framework.test import APIRequestFactory, APITestCase
 
-from languages.serializers import LanguageSerializer
 from languages.models import Language
+from languages.serializers import LanguageSerializer
 from languages.views import LanguageViewSet
 
 
@@ -131,7 +131,7 @@ class LanguageViewSetTests(APITestCase):
         data = LanguageSerializer(self.language_1).data
         self.assertDictEqual(response.data, data)
     
-    def test_superuser_can_see_delete_language(self):
+    def test_superuser_can_delete_language(self):
         view = LanguageViewSet.as_view({'delete': 'destroy'})
         pk = self.language_1.pk
         request = self.rf_client.delete(reverse('api:languages-detail', args=(pk,)), HTTP_AUTHORIZATION=f'Bearer {self.token}')
@@ -140,15 +140,6 @@ class LanguageViewSetTests(APITestCase):
 
         with self.assertRaisesMessage(Language.DoesNotExist, 'Language matching query does not exist.'):
             Language.objects.get(pk=pk)
-    
-    def test_superuser_can_see_single_language(self):
-        view = LanguageViewSet.as_view({'get': 'retrieve'})
-        request = self.rf_client.get(reverse('api:languages-detail', args=(self.language_1.pk,)), HTTP_AUTHORIZATION=f'Bearer {self.token}')
-        response = view(request, pk=self.language_1.pk)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        data = LanguageSerializer(self.language_1).data
-        self.assertDictEqual(response.data, data)
     
     def test_superuser_can_update_language(self):
         view = LanguageViewSet.as_view({'put': 'update'})
