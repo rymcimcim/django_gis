@@ -1,7 +1,6 @@
 import json
 
 from django.contrib.auth.models import User
-from django.http.response import Http404
 from django.shortcuts import get_object_or_404
 from django.test import tag
 from django.urls import reverse
@@ -139,8 +138,8 @@ class LanguageViewSetTests(APITestCase):
         response = view(request, pk=pk)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
 
-        with self.assertRaisesMessage(Http404, 'No Language matches the given query.'):
-            get_object_or_404(Language, pk=pk)
+        with self.assertRaisesMessage(Language.DoesNotExist, 'Language matching query does not exist.'):
+            Language.objects.get(pk=pk)
     
     def test_superuser_can_see_single_language(self):
         view = LanguageViewSet.as_view({'get': 'retrieve'})
@@ -174,3 +173,57 @@ class LanguageViewSetTests(APITestCase):
         language = get_object_or_404(Language, pk=pk)
         data = LanguageSerializer(language).data
         self.assertDictEqual(response.data, data)
+
+
+@tag('language', 'api')
+class LanguageApiTests(APITestCase):
+    def setUp(self) -> None:
+        self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
+        User.objects.create_superuser(username='test_user', email='test_user@test.com', password='test_pass')
+        response = self.client.post(
+            reverse('token_obtain_pair'),
+            json.dumps({"username": "test_user", "password": "test_pass"}),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+    
+    def test_can_get_languages(self):
+        language_2 = Language.objects.create(**{'code':'BB','name':'BBB','native':'BBB'})
+        response = self.client.get(reverse('api:languages-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        queryset = Language.objects.filter(id__in=[self.language_1.pk, language_2.pk])
+        self.assertListEqual(response.data['results'], LanguageSerializer(queryset, many=True).data)
+
+    def test_can_get_language_details(self):
+        response = self.client.get(reverse('api:languages-detail', args=(self.language_1.pk,)))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        language = Language.objects.get(pk=self.language_1.pk)
+        self.assertEqual(response.data, LanguageSerializer(instance=language).data)
+
+    def test_can_delete_language(self):
+        pk = self.language_1.pk
+        response = self.client.delete(reverse('api:languages-detail', args=(pk,)))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        with self.assertRaisesMessage(Language.DoesNotExist, 'Language matching query does not exist.'):
+            Language.objects.get(pk=pk)
+        
+        self.assertEqual(Language.objects.count(), 0)
+    
+    def test_can_put_language(self):
+        put_payload = {'code':'CC','name':'CCC','native':'CCC'}
+        response = self.client.put(reverse('api:languages-detail', args=(self.language_1.pk,)), put_payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        language = get_object_or_404(Language, **put_payload)
+        self.assertEqual(response.data, LanguageSerializer(language).data)
+    
+    def test_can_patch_language(self):
+        response = self.client.patch(reverse('api:languages-detail', args=(self.language_1.pk,)), {'code':'CC'})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        language = get_object_or_404(Language, **{'code':'CC','name':'AAA','native':'AAA'})
+        self.assertEqual(response.data, LanguageSerializer(language).data)
