@@ -190,3 +190,59 @@ class LocationViewSetTests(APITestCase):
         location = get_object_or_404(Location, pk=pk)
         data = LocationSerializer(location).data
         self.assertDictEqual(response.data, data)
+
+
+@tag('location', 'api')
+class LocationApiTests(APITestCase):
+    def setUp(self) -> None:
+        self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
+        self.language_2 = Language.objects.create(**{'code':'BB','name':'BBB','native':'BBB'})
+        self.location_1 = Location.objects.create(**{'geoname_id': 12345, 'capital':'Capital City'})
+        self.location_1.languages.add(self.language_1.pk, self.language_2.pk)
+        User.objects.create_superuser(username='test_user', email='test_user@test.com', password='test_pass')
+        response = self.client.post(
+            reverse('token_obtain_pair'),
+            json.dumps({"username": "test_user", "password": "test_pass"}),
+            content_type="application/json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {response.data["access"]}')
+
+    def test_can_get_locations(self):
+        location_2 = Location.objects.create(**{'geoname_id': 54321, 'capital':'Capital City 2'})
+        response = self.client.get(reverse('api:locations-list'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        queryset = Location.objects.filter(id__in=[self.location_1.pk, location_2.pk])
+        self.assertListEqual(response.data['results'], LocationSerializer(queryset, many=True).data)
+
+    def test_can_get_location_details(self):
+        response = self.client.get(reverse('api:locations-detail', args=(self.location_1.pk,)))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        location = Location.objects.get(pk=self.location_1.pk)
+        self.assertEqual(response.data, LocationSerializer(instance=location).data)
+
+    def test_can_delete_location(self):
+        pk = self.location_1.pk
+        response = self.client.delete(reverse('api:locations-detail', args=(pk,)))
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+        with self.assertRaisesMessage(Location.DoesNotExist, 'Location matching query does not exist.'):
+            Location.objects.get(pk=pk)
+        
+        self.assertEqual(Location.objects.count(), 0)
+    
+    def test_can_put_location(self):
+        put_payload = {'geoname_id': 54321, 'capital':'Capital City 2'}
+        response = self.client.put(reverse('api:locations-detail', args=(self.location_1.pk,)), put_payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        location = get_object_or_404(Location, **put_payload)
+        self.assertEqual(response.data, LocationSerializer(location).data)
+    
+    def test_can_patch_location(self):
+        response = self.client.patch(reverse('api:locations-detail', args=(self.location_1.pk,)), {'geoname_id':54321})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        location = get_object_or_404(Location, **{'geoname_id':54321,'capital':'Capital City'})
+        self.assertEqual(response.data, LocationSerializer(location).data)
