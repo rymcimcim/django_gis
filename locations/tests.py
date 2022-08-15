@@ -30,9 +30,6 @@ class LocationSerializerTests(APITestCase):
     def test_geoname_id_none(self):
         serializer = LocationSerializer(data={'geoname_id':None,'capital':'Capital City','languages':[self.language_1.pk, self.language_2.pk]})
         self.assertTrue(serializer.is_valid(raise_exception=True))
-        
-        location = serializer.save()
-        self.assertIsInstance(location, Location)
     
     def test_geoname_id_max_value(self):
         with self.assertRaisesMessage(ValidationError, 'Ensure this value is less than or equal to 2147483647.') as cm:
