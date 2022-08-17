@@ -1,20 +1,11 @@
-from unittest.mock import patch
-
 from django.test import tag
 
 from rest_framework.test import (
-    APIRequestFactory,
     APITestCase
 )
 from rest_framework.exceptions import ValidationError
-from base import serializers
 
-from geolocations.models import GeoLocation
-from geolocations.serializers import (
-    IPStackSerializer,
-    GeoIP2Serializer,
-    GeoLocationSerializer
-)
+from geolocations.serializers import GeoLocationSerializer
 from languages.models import Language
 from locations.models import Location
 
@@ -29,7 +20,7 @@ class GeoLocationSerializerTests(APITestCase):
             'ip': '134.201.250.155', 'ip_type': 'ipv4', 'continent_code': 'NA',
             'continent_name': 'North America', 'country_code': 'US', 'country_name': 'United States',
             'region_code': 'CA', 'region_name': 'California', 'city': 'Los Angeles',
-            'postal_code': '90012', 'latitude': 34.0655517578125, 'longitude': -118.24053955078125,
+            'postal_code': '90012', 'coordinates': {'latitude': 34.0655517578125, 'longitude': -118.24053955078125},
             'location': self.location_1.pk, 'is_eu': False
         }
 
@@ -222,121 +213,23 @@ class GeoLocationSerializerTests(APITestCase):
         
         self.assertEqual(cm.exception.detail['postal_code'][0].code, 'max_length')
     
-    def test_longitude_empty_negative(self):
-        payload_data = self.payload_data
-        payload_data['longitude'] = None
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'This field may not be null.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'null')
-
-        payload_data['longitude'] = ''
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'A valid number is required.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'invalid')
-    
-    def test_longitude_max_digits_negative(self):
-        payload_data = self.payload_data
-        payload_data['longitude'] = 1800.12345678901234
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure that there are no more than 3 digits before the decimal point.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'max_whole_digits')
-
-    def test_longitude_min_value_negative(self):
-        payload_data = self.payload_data
-        payload_data['longitude'] = -181.12345678901234
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure this value is greater than or equal to -180.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'min_value')
-
-        payload_data['longitude'] = -180.123456789012345
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure this value is greater than or equal to -180.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'min_value')
-
-    def test_longitude_max_value_negative(self):
-        payload_data = self.payload_data
-        payload_data['longitude'] = 180.123456789012345
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure this value is less than or equal to 180.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['longitude'][0].code, 'max_value')
-    
-    def test_latitude_empty_negative(self):
-        payload_data = self.payload_data
-        payload_data['latitude'] = None
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'This field may not be null.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'null')
-
-        payload_data['latitude'] = ''
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'A valid number is required.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'invalid')
-    
-    def test_latitude_max_digits_negative(self):
-        payload_data = self.payload_data
-        payload_data['latitude'] = 91.12345678901234
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure that there are no more than 15 digits in total.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'max_digits')
-
-    def test_latitude_max_digits_negative(self):
-        payload_data = self.payload_data
-        payload_data['latitude'] = -91.12345678901234
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure that there are no more than 15 digits in total.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'max_digits')
-
-    def test_latitude_max_digits_negative(self):
-        payload_data = self.payload_data
-        payload_data['latitude'] = -90.123456789012345
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure that there are no more than 15 digits in total.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'max_digits')
-
-    def test_latitude_max_digits_negative(self):
-        payload_data = self.payload_data
-        payload_data['latitude'] = 90.123456789012345
-        serializer = GeoLocationSerializer(data=payload_data)
-        with self.assertRaisesMessage(ValidationError, 'Ensure that there are no more than 15 digits in total.') as cm:
-            serializer.is_valid(raise_exception=True)
-        
-        self.assertEqual(cm.exception.detail['latitude'][0].code, 'max_digits')
-    
-    def test_coordinates_empty_negative(self):
+    def test_coordinates_blank_negative(self):
         payload_data = self.payload_data
         payload_data['coordinates'] = ''
         serializer = GeoLocationSerializer(data=payload_data)
-        serializer.is_valid(raise_exception=True)
-        with self.assertRaisesMessage(AttributeError, "can't set attribute") as cm:
-            serializer.save()
+        with self.assertRaisesMessage(ValidationError, 'Enter a valid location.') as cm:
+            serializer.is_valid(raise_exception=True)
         
+        self.assertEqual(cm.exception.detail['coordinates'][0].code, 'invalid')
+
+    def test_coordinates_null_negative(self):
+        payload_data = self.payload_data
         payload_data['coordinates'] = None
         serializer = GeoLocationSerializer(data=payload_data)
-        serializer.is_valid(raise_exception=True)
-        with self.assertRaisesMessage(AttributeError, "can't set attribute") as cm:
-            serializer.save()
+        with self.assertRaisesMessage(ValidationError, 'This field may not be null.') as cm:
+            serializer.is_valid(raise_exception=True)
+        
+        self.assertEqual(cm.exception.detail['coordinates'][0].code, 'null')
 
     def test_location_null_positive(self):
         payload_data = self.payload_data
@@ -372,9 +265,3 @@ class GeoLocationSerializerTests(APITestCase):
         serializer = GeoLocationSerializer(data=self.payload_data)
         serializer.is_valid(raise_exception=True)
         self.assertEqual(serializer.validated_data['location'], self.location_1)
-
-    def test_get_coordinates(self):
-        with patch.object(GeoLocationSerializer, 'get_coordinates') as get_coords_mock:
-            serializer = GeoLocationSerializer(data=self.payload_data)
-            serializer.is_valid(raise_exception=True)
-            serializer.get_coordinates.assert_called_once

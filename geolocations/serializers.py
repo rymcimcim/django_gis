@@ -1,6 +1,9 @@
 from django.contrib.gis.geos import Point
 
+from drf_extra_fields.geo_fields import PointField
+
 from rest_framework import serializers
+
 from rest_framework_gis.serializers import GeometrySerializerMethodField
 
 from geolocations.models import (
@@ -37,16 +40,11 @@ class IPStackSerializer(BaseModelSerializer):
 
 
 class GeoLocationSerializer(BaseModelSerializer):
-    longitude = serializers.DecimalField(max_digits=17, decimal_places=14, max_value=180, min_value=-180, required=True, write_only=True)
-    latitude = serializers.DecimalField(max_digits=15, decimal_places=13, max_value=90, min_value=-90, required=True, write_only=True)
-    coordinates = GeometrySerializerMethodField()
+    coordinates = PointField(required=True)
 
     class Meta:
         model = GeoLocation
         fields = '__all__'
-    
-    def get_coordinates(self, obj):
-        return Point(obj.latitude, obj.latitude)
     
     def to_representation(self, instance):
         representation = super().to_representation(instance)
