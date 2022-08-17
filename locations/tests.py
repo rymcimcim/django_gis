@@ -7,7 +7,10 @@ from django.urls import reverse
 
 from rest_framework import status
 from rest_framework.exceptions import ValidationError
-from rest_framework.test import APIRequestFactory, APITestCase
+from rest_framework.test import (
+    APIRequestFactory,
+    APITestCase,
+)
 
 from languages.models import Language
 from locations.models import Location
@@ -77,6 +80,16 @@ class LocationSerializerTests(APITestCase):
         serializer.is_valid(raise_exception=True)
         self.assertEqual(serializer.validated_data['capital'], 'Capital City')
 
+    def test_is_eu_negative(self):
+        payload_data = {'geoname_id':12345,'capital':'Capital City','languages':[self.language_1.pk, self.language_2.pk]}
+        payload_data['is_eu'] = ''
+        serializer = LocationSerializer(data=payload_data)
+        with self.assertRaisesMessage(ValidationError, 'Must be a valid boolean.') as cm:
+            serializer.is_valid(raise_exception=True)
+        
+        payload_data['is_eu'] = None
+        with self.assertRaisesMessage(ValidationError, 'Must be a valid boolean.') as cm:
+            serializer.is_valid(raise_exception=True)
     
     def test_languages_null_negative(self):
         with self.assertRaisesMessage(ValidationError, 'This field may not be null.') as cm:
@@ -120,7 +133,7 @@ class LocationViewSetTests(APITestCase):
     def setUp(self) -> None:
         language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
         self.language_2 = Language.objects.create(**{'code':'BB','name':'BBB','native':'BBB'})
-        self.location_1 = Location.objects.create(**{'geoname_id': 12345, 'capital':'Capital City'})
+        self.location_1 = Location.objects.create(**{'geoname_id': 12345, 'capital':'Capital City', 'is_eu': True})
         self.location_1.languages.add(language_1.pk, self.language_2.pk)
         self.rf_client = APIRequestFactory(enforce_csrf_checks=True)
         User.objects.create_superuser(username='test_user', email='test_user@test.com', password='test_pass')
@@ -166,7 +179,7 @@ class LocationViewSetTests(APITestCase):
     
     def test_superuser_can_update_location(self):
         view = LocationViewSet.as_view({'put': 'update'})
-        update_payload = {'geoname_id': 54321, 'capital':'Capital City 2'}
+        update_payload = {'geoname_id': 54321, 'capital':'Capital City 2', 'is_eu': False}
         pk = self.location_1.pk
         request = self.rf_client.put(reverse('api:locations-detail', args=(pk,)), update_payload, HTTP_AUTHORIZATION=f'Bearer {self.token}')
         response = view(request, pk=pk)

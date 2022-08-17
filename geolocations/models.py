@@ -24,7 +24,6 @@ class GeoLocation(BaseModel):
     postal_code = models.CharField(max_length=12, blank=True)
     coordinates = models.PointField()
     location = models.OneToOneField(Location, on_delete=models.SET_NULL, null=True)
-    is_eu = models.BooleanField(default=False)
 
     @property
     def latitude(self) -> float:
