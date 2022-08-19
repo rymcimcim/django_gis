@@ -14,7 +14,7 @@ from languages.serializers import LanguageSerializer
 from languages.views import LanguageViewSet
 
 
-@tag('language', 'serializer')
+@tag('languages-serializer')
 class LanguageSerializerTests(APITestCase):
     def test_serializer_expected_fields(self):
         payload_data = {'code':'AA','name':'AAA','native':'AAA'}
@@ -96,7 +96,7 @@ class LanguageSerializerTests(APITestCase):
         serializer.is_valid(raise_exception=True)
 
 
-@tag('language', 'viewset')
+@tag('languages-viewset')
 class LanguageViewSetTests(APITestCase):
     def setUp(self) -> None:
         self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
@@ -166,7 +166,7 @@ class LanguageViewSetTests(APITestCase):
         self.assertDictEqual(response.data, data)
 
 
-@tag('language', 'api')
+@tag('languages-api')
 class LanguageApiTests(APITestCase):
     def setUp(self) -> None:
         self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})

@@ -18,7 +18,7 @@ from locations.serializers import LocationSerializer
 from locations.views import LocationViewSet
 
 
-@tag('location', 'serializer')
+@tag('locations-serializer')
 class LocationSerializerTests(APITestCase):
     def setUp(self) -> None:
         self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
@@ -128,7 +128,7 @@ class LocationSerializerTests(APITestCase):
         self.language_2.delete()
 
 
-@tag('location', 'viewset')
+@tag('locations-viewset')
 class LocationViewSetTests(APITestCase):
     def setUp(self) -> None:
         language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
@@ -202,7 +202,7 @@ class LocationViewSetTests(APITestCase):
         self.assertDictEqual(response.data, data)
 
 
-@tag('location', 'api')
+@tag('locations-api')
 class LocationApiTests(APITestCase):
     def setUp(self) -> None:
         self.language_1 = Language.objects.create(**{'code':'AA','name':'AAA','native':'AAA'})
