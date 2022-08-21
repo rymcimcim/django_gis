@@ -12,4 +12,10 @@ class Location(BaseModel):
     is_eu = models.BooleanField(default=False)
 
     def __repr__(self) -> str:
-        return f'{self.geoname_id}-{self.capital}'
+        ret = [str(self.id)]
+        if self.geoname_id:
+            ret.append(str(self.geoname_id))
+        if self.capital:
+            ret.append(self.capital)
+        ret.append(f'is_eu={self.is_eu}')
+        return '-'.join([x for x in ret])

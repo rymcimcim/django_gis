@@ -7,6 +7,7 @@ from geolocations.serializers import GeoLocationSerializer
 from languages.serializers import LanguageSerializer
 from locations.serializers import LocationSerializer
 
+
 @tag('geolocations-serializer')
 class GeoLocationSerializerTests(APITestCase):
     def setUp(self) -> None:

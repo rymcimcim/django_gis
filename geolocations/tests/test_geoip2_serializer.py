@@ -6,6 +6,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.test import APITestCase
 
 from geolocations.serializers import GeoIP2Serializer
+from locations.models import Location
 
 
 @tag('geoip2-serializer')
@@ -17,18 +18,14 @@ class GeoIP2SerializerTests(APITestCase):
             'is_in_european_union': False, 'latitude': 37.751, 'longitude': -97.822,
             'postal_code': None, 'region': None, 'time_zone': 'America/Chicago'
         }
-        self.expected_input_keys = {
-            'city', 'continent_code', 'continent_name', 'country_code',
-            'country_name', 'is_in_european_union', 'postal_code', 'region' 
-        }
         self.expected_output_keys = [
             'continent_code','continent_name','country_code',
             'country_name','location','coordinates',
         ]
 
     def test_serializer_expected_input_fields(self):
-        serializer = GeoIP2Serializer(instance=self.geoip2_payload)
-        self.assertEqual(set(serializer.data.keys()), set(self.expected_input_keys))
+        serializer = GeoIP2Serializer(data=self.geoip2_payload)
+        self.assertEqual(set(serializer.initial_data.keys()), set(self.geoip2_payload.keys()))
 
     def test_serializer_expected_output_fields(self):
         serializer = GeoIP2Serializer(data=self.geoip2_payload)
@@ -237,7 +234,10 @@ class GeoIP2SerializerTests(APITestCase):
         self.assertTrue(serializer.is_valid(raise_exception=True))
         self.assertIn('is_in_european_union', serializer.initial_data)
         self.assertNotIn('is_in_european_union', serializer.validated_data)
-        self.assertIn('is_eu', serializer.validated_data['location'])
+        
+        location = Location.objects.last()
+        self.assertEqual(location.pk, serializer.validated_data['location'])
+        self.assertEqual(location.is_eu, serializer.initial_data['is_in_european_union'])
     
     def test_geoip2_longitude_required(self):
         payload_data = self.geoip2_payload
@@ -310,7 +310,7 @@ class GeoIP2SerializerTests(APITestCase):
         self.assertNotIn('longitude', serializer.validated_data)
         self.assertIn('longitude', serializer.validated_data['coordinates'])
     
-    def test_geoip2_latutude_required(self):
+    def test_geoip2_latitude_required(self):
         payload_data = self.geoip2_payload
         del payload_data['latitude']
         serializer = GeoIP2Serializer(data=payload_data)
