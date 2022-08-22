@@ -3,12 +3,8 @@ from drf_extra_fields.geo_fields import PointField
 from rest_framework import serializers
 
 from base.serializers import BaseModelSerializer
-from geolocations.models import (
-    GeoLocation,
-    IPTypes,
-)
+from geolocations.models import GeoLocation
 from locations.models import Location
-
 from locations.serializers import LocationSerializer, LocationWithLanguagesSerializer
 
 
@@ -48,6 +44,16 @@ class GeoIP2Serializer(serializers.Serializer):
 
         ret.update(update_dict)
         return ret
+
+
+class GeoIP2WithIPSerializer(GeoIP2Serializer):
+    ip = serializers.IPAddressField(required=True)
+
+    def to_internal_value(self, data):
+        internal_value = super().to_internal_value(data)
+        internal_value['ip'] = data['ip']
+        internal_value['ip_type'] = data['ip_type']
+        return internal_value
 
 
 class IPStackSerializer(serializers.Serializer):

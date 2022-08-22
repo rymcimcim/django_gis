@@ -10,5 +10,5 @@ def is_ip_address(input: str) -> Union[bool, tuple[bool, int]]:
     except ValueError:
         ret = False
     else:
-        ret = (True, getattr(IPTypes, f"IPV{network.version}").value)
+        ret = getattr(IPTypes, f"IPV{network.version}").value
     return ret

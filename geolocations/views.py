@@ -1,22 +1,25 @@
 import os
+import socket
 
 from django.contrib.gis.geoip2 import GeoIP2
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
 import requests
 
-from rest_framework import status, viewsets
+from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.request import Request
-from rest_framework.serializers import ModelSerializer
 
 from geolocations.models import (
     GeoLocation,
 )
 from geolocations.serializers import (
     GeoIP2Serializer,
+    GeoIP2WithIPSerializer,
     GeoLocationSerializer,
     IPStackSerializer,
 )
@@ -28,53 +31,60 @@ IPSTACK_URL = 'http://api.ipstack.com/'
 
 
 class GeoLocationCreateFactory:
-    def _create_from_serializer_payload(self, serializer_class: ModelSerializer, payload: dict) -> Response:
-        serializer = serializer_class(data=payload)
+    def create(self, data: dict) -> Response:
+        serializer = GeoLocationSerializer(data=data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        serializer.save()
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def _get_geoip2_payload(self, data: str) -> dict:
         g = GeoIP2()
-        country = g.country(data)
-        city = g.city(data)
-        coordinates = g.geos(data)
-        payload = {**country, **city, 'coordinates': coordinates}
+        try:
+            payload = g.city(data)
+        except ValidationError as exc:
+            raise serializers.ValidationError(detail=exc.message, code=exc.code) from exc
+        except socket.gaierror as exc:
+            raise serializers.ValidationError(detail=exc.strerror, code='invalid')
 
         ip_addr = is_ip_address(data)
         if ip_addr:
-            payload | {'ip':ip_addr[0],'ip_type':ip_addr[1]}
-
+            payload.update({'ip':data,'ip_type':ip_addr})
         return payload
 
     def _create_from_geoip2(self, data: str) -> Response:
         payload = self._get_geoip2_payload(data)
-        return self._create_from_serializer_payload(GeoIP2Serializer, payload)
+        geoip2_serializer = GeoIP2Serializer(data=payload)
+        geoip2_serializer.is_valid(raise_exception=True)
+        return self.create(data=geoip2_serializer.validated_data)
     
     def _create_from_ipstack(self, ip: str) -> Response:
-        def get_ipstack_payload(ip: str) -> dict:
+        def get_ipstack_payload_and_serializer_class(ip: str) -> dict:
             r = requests.get(IPSTACK_URL + ip, params={'access_key': os.environ["IPSTACK_ACCESS_KEY"]})
             payload = r.json()
+            serializer_class = IPStackSerializer
             if payload.get('success') == 'false':
                 payload = self._get_geoip2_payload(ip)
+                serializer_class = GeoIP2WithIPSerializer
 
-            return payload
+            return payload, serializer_class
 
-        payload = get_ipstack_payload(ip)
-        return self._create_from_serializer_payload(IPStackSerializer, payload)
+        payload, serializer_class = get_ipstack_payload_and_serializer_class(ip)
+        ipstack_serializer = serializer_class(data=payload)
+        ipstack_serializer.is_valid(raise_exception=True)
+        return self.create(data=ipstack_serializer.validated_data)
 
-    def create_geolocation(self, request: Request):
-        url = request.GET.pop('url', None)
-        ip = request.GET.pop('ip', None)
+    def create_geolocation(self, request: Request) -> Response:
+        url = request.GET.get('url', None)
+        ip = request.GET.get('ip', None)
         if url and ip:
-            raise ValidationError("Both 'url' and 'ip' parameters provided at the same time are not supported.")
+            raise serializers.ValidationError("Both 'url' and 'ip' parameters provided at the same time are not supported.")
         if url:
             return self._create_from_geoip2(url)
         elif ip:
             return self._create_from_ipstack(ip)
         else:
-            raise ValidationError("'url' or 'ip' parameter is required.")
+            raise serializers.ValidationError("'url' or 'ip' parameter is required.")
+
 
 class GeoLocationViewSet(viewsets.ModelViewSet):
     queryset = GeoLocation.objects.all()
@@ -85,7 +95,7 @@ class GeoLocationViewSet(viewsets.ModelViewSet):
         transaction.on_commit(lambda: dump_data_base.delay())
         return response
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=['get'])
     def add(self, request) -> Response:
         geoloc_create_factory = GeoLocationCreateFactory()
         return geoloc_create_factory.create_geolocation(request)
